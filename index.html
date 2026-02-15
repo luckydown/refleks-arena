@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#f0f2f5" />
+  <title>Phase Loop</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --text: #0f172a;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --white: #ffffff;
+      --muted: #64748b;
+      --panel: rgba(255, 255, 255, 0.92);
+      --overlay: rgba(15, 23, 42, 0.72);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: var(--overlay);
+      z-index: 5;
+    }
+
+    .overlay.show { display: flex; }
+
+    .panel {
+      width: min(420px, 95vw);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: 0 12px 38px rgba(15, 23, 42, 0.2);
+      padding: 22px;
+      text-align: center;
+      backdrop-filter: blur(6px);
+    }
+
+    h1, h2, p { margin: 0; }
+
+    .title {
+      font-size: clamp(1.9rem, 6vw, 2.8rem);
+      font-weight: 900;
+      letter-spacing: 1.8px;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--blue);
+      color: var(--white);
+      transition: transform .12s ease, filter .12s ease;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn.secondary { background: #334155; }
+    .btn.danger { background: var(--red); }
+
+    .pulse {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    #splash .title { animation: fadeLogo 2s ease forwards; }
+    @keyframes fadeLogo {
+      0% { opacity: 0; transform: translateY(12px); }
+      35%,65% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-12px); }
+    }
+
+    #hud {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: 12px;
+      right: 12px;
+      z-index: 3;
+      display: none;
+      pointer-events: none;
+    }
+
+    #hud.show { display: block; }
+
+    .hud-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #scoreText {
+      margin: 0 auto;
+      font-size: 1.2rem;
+      font-weight: 900;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.8);
+      min-width: 84px;
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    #pauseBtn {
+      pointer-events: auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 0;
+      font-size: 1.1rem;
+      font-weight: 900;
+      background: rgba(255,255,255,.85);
+      color: #1e293b;
+      cursor: pointer;
+    }
+
+    #bannerAd {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(50px + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 4;
+      background: #dbe3ef;
+      color: #334155;
+      font-weight: 800;
+      letter-spacing: .5px;
+      border-top: 2px solid rgba(51,65,85,.2);
+    }
+
+    .setting-row {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #e8edf6;
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 700;
+    }
+
+    .switch {
+      position: relative;
+      width: 56px;
+      height: 32px;
+      background: #94a3b8;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .2s ease;
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 24px;
+      height: 24px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s ease;
+    }
+
+    .switch.on { background: var(--blue); }
+    .switch.on::after { transform: translateX(24px); }
+
+    #adOverlay .panel {
+      background: #fff;
+      border: 3px solid #cbd5e1;
+    }
+
+    .loader {
+      margin: 18px auto;
+      width: 44px;
+      height: 44px;
+      border: 5px solid #cbd5e1;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg);} }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="gameCanvas" aria-label="Phase Loop oyun alanı"></canvas>
+
+    <div id="hud">
+      <div class="hud-row">
+        <div style="width:44px"></div>
+        <div id="scoreText">0</div>
+        <button id="pauseBtn" aria-label="Duraklat">II</button>
+      </div>
+    </div>
+
+    <div id="splash" class="overlay show">
+      <div class="panel">
+        <h1 class="title">PHASE LOOP</h1>
+        <p class="subtitle">Hazır ol...</p>
+      </div>
+    </div>
+
+    <div id="menu" class="overlay">
+      <div class="panel">
+        <h1 class="title">PHASE LOOP</h1>
+        <p class="subtitle" id="highScoreMenu">EN YÜKSEK SKOR: 0</p>
+        <button class="btn pulse" id="playBtn">OYNA</button>
+        <button class="btn secondary" id="settingsBtn">AYARLAR</button>
+      </div>
+    </div>
+
+    <div id="settings" class="overlay">
+      <div class="panel">
+        <h2>AYARLAR</h2>
+        <div class="setting-row">
+          <span>SES</span>
+          <div id="soundSwitch" class="switch" role="switch" aria-checked="true"></div>
+        </div>
+        <div class="setting-row">
+          <span>TİTREŞİM</span>
+          <div id="hapticSwitch" class="switch" role="switch" aria-checked="true"></div>
+        </div>
+        <button class="btn" id="closeSettingsBtn">KAPAT</button>
+      </div>
+    </div>
+
+    <div id="pause" class="overlay">
+      <div class="panel">
+        <h2>DURAKLATILDI</h2>
+        <button class="btn" id="resumeBtn">DEVAM ET</button>
+        <button class="btn secondary" id="quitBtn">MENÜYE DÖN</button>
+      </div>
+    </div>
+
+    <div id="gameOver" class="overlay">
+      <div class="panel">
+        <h2>OYUN BİTTİ</h2>
+        <p id="finalScore" class="subtitle" style="margin-top:8px;">Skor: 0</p>
+        <p id="bestScore" class="subtitle" style="margin-top:4px;">En Yüksek: 0</p>
+        <button class="btn danger" id="reviveBtn">📺 İZLE VE DEVAM ET</button>
+        <button class="btn" id="restartBtn">TEKRAR OYNA</button>
+      </div>
+    </div>
+
+    <div id="adOverlay" class="overlay">
+      <div class="panel">
+        <h2 id="adTitle">REKLAM</h2>
+        <div class="loader" id="adLoader"></div>
+        <p id="adText" class="subtitle">Reklam yükleniyor...</p>
+        <button class="btn" id="adCloseBtn" style="display:none;">KAPAT</button>
+      </div>
+    </div>
+
+    <div id="bannerAd">REKLAM ALANI</div>
+  </div>
+
+  <script>
+    class StorageManager {
+      static loadSettings() {
+        const raw = localStorage.getItem("phase_loop_settings");
+        const defaults = { sound: true, haptics: true };
+        if (!raw) return defaults;
+        try {
+          const parsed = JSON.parse(raw);
+          return {
+            sound: parsed.sound !== false,
+            haptics: parsed.haptics !== false,
+          };
+        } catch {
+          return defaults;
+        }
+      }
+      static saveSettings(settings) {
+        localStorage.setItem("phase_loop_settings", JSON.stringify(settings));
+      }
+      static loadHighScore() {
+        return Number(localStorage.getItem("phase_loop_high_score") || 0);
+      }
+      static saveHighScore(score) {
+        localStorage.setItem("phase_loop_high_score", String(score));
+      }
+    }
+
+    class AudioManager {
+      constructor(settings) {
+        this.settings = settings;
+        this.ctx = null;
+      }
+      ensureContext() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === "suspended") this.ctx.resume();
+      }
+      beep(freq = 440, duration = 0.08, type = "sine", gainVal = 0.08) {
+        if (!this.settings.sound) return;
+        this.ensureContext();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = gainVal;
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.stop(this.ctx.currentTime + duration);
+      }
+      tap() { this.beep(620, 0.06, "square", 0.07); }
+      score() { this.beep(780, 0.05, "triangle", 0.06); }
+      hit() { this.beep(180, 0.2, "sawtooth", 0.09); }
+      revive() { this.beep(520, 0.18, "sine", 0.08); }
+    }
+
+    class HapticManager {
+      constructor(settings) { this.settings = settings; }
+      pulse(pattern = 12) {
+        if (this.settings.haptics && navigator.vibrate) navigator.vibrate(pattern);
+      }
+    }
+
+    class AdManager {
+      constructor() {
+        this.overlay = document.getElementById("adOverlay");
+        this.title = document.getElementById("adTitle");
+        this.text = document.getElementById("adText");
+        this.loader = document.getElementById("adLoader");
+        this.closeBtn = document.getElementById("adCloseBtn");
+      }
+
+      showInterstitial(onClosed) {
+        if (Math.random() > 0.3) {
+          onClosed?.();
+          return;
+        }
+        this.overlay.classList.add("show");
+        this.title.textContent = "TAM EKRAN REKLAM";
+        this.text.textContent = "Lütfen bekleyin...";
+        this.loader.style.display = "block";
+        this.closeBtn.style.display = "none";
+
+        setTimeout(() => {
+          this.loader.style.display = "none";
+          this.text.textContent = "Reklam tamamlandı.";
+          this.closeBtn.style.display = "block";
+          this.closeBtn.onclick = () => {
+            this.overlay.classList.remove("show");
+            onClosed?.();
+          };
+        }, 3000);
+      }
+
+      showRewarded(onRewarded) {
+        this.overlay.classList.add("show");
+        this.title.textContent = "ÖDÜLLÜ REKLAM";
+        this.text.textContent = "Video oynatılıyor...";
+        this.loader.style.display = "block";
+        this.closeBtn.style.display = "none";
+
+        setTimeout(() => {
+          this.overlay.classList.remove("show");
+          onRewarded?.();
+        }, 3000);
+      }
+    }
+
+    class Game {
+      constructor() {
+        this.canvas = document.getElementById("gameCanvas");
+        this.ctx = this.canvas.getContext("2d");
+        this.hud = document.getElementById("hud");
+        this.scoreEl = document.getElementById("scoreText");
+        this.settings = StorageManager.loadSettings();
+        this.highScore = StorageManager.loadHighScore();
+        this.audio = new AudioManager(this.settings);
+        this.haptic = new HapticManager(this.settings);
+        this.adManager = new AdManager();
+
+        this.state = "SPLASH";
+        this.lastTs = 0;
+        this.animId = null;
+        this.revivedThisRun = false;
+
+        this.overlays = {
+          splash: document.getElementById("splash"),
+          menu: document.getElementById("menu"),
+          settings: document.getElementById("settings"),
+          pause: document.getElementById("pause"),
+          gameOver: document.getElementById("gameOver"),
+        };
+
+        this.player = { angle: 0, lane: "outer", invincibleUntil: 0 };
+        this.obstacles = [];
+        this.score = 0;
+        this.baseSpeed = 1.2;
+        this.spawnTimer = 0;
+        this.spawnInterval = 1.1;
+
+        this.bindUI();
+        this.bindInput();
+        this.resize();
+        window.addEventListener("resize", () => this.resize());
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden && this.state === "PLAYING") this.showPause();
+        });
+
+        this.updateHighScoreUI();
+        setTimeout(() => this.showMenu(), 2000);
+        this.loop = this.loop.bind(this);
+        this.animId = requestAnimationFrame(this.loop);
+      }
+
+      bindUI() {
+        document.getElementById("playBtn").onclick = () => this.startGame();
+        document.getElementById("settingsBtn").onclick = () => this.showSettings();
+        document.getElementById("closeSettingsBtn").onclick = () => this.closeSettings();
+        document.getElementById("pauseBtn").onclick = () => this.showPause();
+        document.getElementById("resumeBtn").onclick = () => this.resumeGame();
+        document.getElementById("quitBtn").onclick = () => this.quitToMenu();
+        document.getElementById("restartBtn").onclick = () => this.startGame();
+        document.getElementById("reviveBtn").onclick = () => this.tryRevive();
+
+        const soundSwitch = document.getElementById("soundSwitch");
+        const hapticSwitch = document.getElementById("hapticSwitch");
+        const syncSwitches = () => {
+          soundSwitch.classList.toggle("on", this.settings.sound);
+          hapticSwitch.classList.toggle("on", this.settings.haptics);
+          soundSwitch.setAttribute("aria-checked", String(this.settings.sound));
+          hapticSwitch.setAttribute("aria-checked", String(this.settings.haptics));
+        };
+
+        soundSwitch.onclick = () => {
+          this.settings.sound = !this.settings.sound;
+          StorageManager.saveSettings(this.settings);
+          syncSwitches();
+          this.audio.tap();
+        };
+        hapticSwitch.onclick = () => {
+          this.settings.haptics = !this.settings.haptics;
+          StorageManager.saveSettings(this.settings);
+          syncSwitches();
+          this.haptic.pulse(10);
+        };
+        syncSwitches();
+      }
+
+      bindInput() {
+        const triggerSwitch = (e) => {
+          e.preventDefault();
+          if (this.state !== "PLAYING") return;
+          this.player.lane = this.player.lane === "inner" ? "outer" : "inner";
+          this.audio.tap();
+          this.haptic.pulse(14);
+        };
+
+        document.addEventListener("touchstart", triggerSwitch, { passive: false });
+        document.addEventListener("mousedown", (e) => {
+          if (e.button === 0) triggerSwitch(e);
+        });
+      }
+
+      resize() {
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = Math.floor(rect.width * dpr);
+        this.canvas.height = Math.floor(rect.height * dpr);
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.w = rect.width;
+        this.h = rect.height;
+        this.cx = this.w / 2;
+        this.cy = this.h / 2 - 16;
+        const minSide = Math.min(this.w, this.h - 80);
+        this.outerR = minSide * 0.3;
+        this.innerR = this.outerR - 34;
+        this.playerRadius = 10;
+      }
+
+      setState(nextState) {
+        this.state = nextState;
+        Object.values(this.overlays).forEach((el) => el.classList.remove("show"));
+        this.hud.classList.remove("show");
+
+        if (nextState === "SPLASH") this.overlays.splash.classList.add("show");
+        if (nextState === "MENU") this.overlays.menu.classList.add("show");
+        if (nextState === "SETTINGS") this.overlays.settings.classList.add("show");
+        if (nextState === "PLAYING") this.hud.classList.add("show");
+        if (nextState === "PAUSED") {
+          this.hud.classList.add("show");
+          this.overlays.pause.classList.add("show");
+        }
+        if (nextState === "GAME_OVER") this.overlays.gameOver.classList.add("show");
+      }
+
+      showMenu() {
+        this.setState("MENU");
+        this.updateHighScoreUI();
+      }
+
+      showSettings() { this.setState("SETTINGS"); }
+      closeSettings() { this.setState("MENU"); }
+
+      startGame() {
+        this.score = 0;
+        this.scoreEl.textContent = "0";
+        this.player.angle = 0;
+        this.player.lane = "outer";
+        this.player.invincibleUntil = 0;
+        this.obstacles = [];
+        this.spawnTimer = 0;
+        this.spawnInterval = 1.1;
+        this.revivedThisRun = false;
+        this.setState("PLAYING");
+      }
+
+      showPause() {
+        if (this.state === "PLAYING") this.setState("PAUSED");
+      }
+
+      resumeGame() {
+        if (this.state === "PAUSED") this.setState("PLAYING");
+      }
+
+      quitToMenu() {
+        this.setState("MENU");
+      }
+
+      gameOver() {
+        this.audio.hit();
+        this.haptic.pulse([20, 30, 20]);
+        const finalEl = document.getElementById("finalScore");
+        const bestEl = document.getElementById("bestScore");
+
+        if (this.score > this.highScore) {
+          this.highScore = this.score;
+          StorageManager.saveHighScore(this.highScore);
+        }
+
+        finalEl.textContent = `Skor: ${this.score}`;
+        bestEl.textContent = `En Yüksek: ${this.highScore}`;
+        document.getElementById("reviveBtn").style.display = this.revivedThisRun ? "none" : "block";
+
+        this.adManager.showInterstitial(() => this.setState("GAME_OVER"));
+        this.updateHighScoreUI();
+      }
+
+      tryRevive() {
+        if (this.revivedThisRun) return;
+        this.adManager.showRewarded(() => {
+          this.revivedThisRun = true;
+          this.player.invincibleUntil = performance.now() + 2000;
+          this.player.lane = Math.random() > 0.5 ? "inner" : "outer";
+          this.audio.revive();
+          this.haptic.pulse([12, 20, 12]);
+          this.setState("PLAYING");
+        });
+      }
+
+      spawnObstacle() {
+        const minSep = 0.7;
+        const angle = this.player.angle + Math.PI + (Math.random() * 2 - 1) * 0.7;
+        const lane = Math.random() > 0.5 ? "inner" : "outer";
+        if (this.obstacles.some(o => Math.abs(this.angleDiff(o.angle, angle)) < minSep && o.lane === lane)) return;
+        this.obstacles.push({ angle, lane, passed: false });
+      }
+
+      angleDiff(a, b) {
+        let d = a - b;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        return d;
+      }
+
+      update(dt, now) {
+        if (this.state !== "PLAYING") return;
+
+        const speed = this.baseSpeed + Math.min(this.score * 0.04, 1.6);
+        this.player.angle += speed * dt;
+        this.spawnTimer += dt;
+
+        this.spawnInterval = Math.max(0.42, 1.1 - this.score * 0.015);
+        if (this.spawnTimer >= this.spawnInterval) {
+          this.spawnTimer = 0;
+          this.spawnObstacle();
+        }
+
+        for (const ob of this.obstacles) {
+          const diff = this.angleDiff(this.player.angle, ob.angle);
+          if (!ob.passed && diff > 0.12) {
+            ob.passed = true;
+            this.score += 1;
+            this.scoreEl.textContent = String(this.score);
+            this.audio.score();
+          }
+
+          const colliding = Math.abs(diff) < 0.15 && ob.lane === this.player.lane;
+          if (colliding && now > this.player.invincibleUntil) {
+            this.gameOver();
+            return;
+          }
+        }
+
+        this.obstacles = this.obstacles.filter(o => Math.abs(this.angleDiff(this.player.angle, o.angle)) < Math.PI);
+      }
+
+      drawRing() {
+        const c = this.ctx;
+        c.lineWidth = 4;
+        c.strokeStyle = "#94a3b8";
+        c.beginPath();
+        c.arc(this.cx, this.cy, this.outerR, 0, Math.PI * 2);
+        c.stroke();
+        c.beginPath();
+        c.arc(this.cx, this.cy, this.innerR, 0, Math.PI * 2);
+        c.stroke();
+      }
+
+      drawObstacles() {
+        const c = this.ctx;
+        for (const ob of this.obstacles) {
+          const r = ob.lane === "inner" ? this.innerR : this.outerR;
+          const arcSize = 0.18;
+          c.lineWidth = 10;
+          c.strokeStyle = ob.lane === "inner" ? "#dc2626" : "#2563eb";
+          c.beginPath();
+          c.arc(this.cx, this.cy, r, ob.angle - arcSize, ob.angle + arcSize);
+          c.stroke();
+        }
+      }
+
+      drawPlayer(now) {
+        const c = this.ctx;
+        const r = this.player.lane === "inner" ? this.innerR : this.outerR;
+        const x = this.cx + Math.cos(this.player.angle) * r;
+        const y = this.cy + Math.sin(this.player.angle) * r;
+        const invincible = now < this.player.invincibleUntil;
+        c.fillStyle = invincible ? "#16a34a" : (this.player.lane === "inner" ? "#2563eb" : "#dc2626");
+        c.beginPath();
+        c.arc(x, y, this.playerRadius, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      render(now) {
+        const c = this.ctx;
+        c.clearRect(0, 0, this.w, this.h);
+
+        c.fillStyle = "#f0f2f5";
+        c.fillRect(0, 0, this.w, this.h);
+
+        this.drawRing();
+        this.drawObstacles();
+        this.drawPlayer(now);
+      }
+
+      loop(ts) {
+        const dt = Math.min(0.033, (ts - this.lastTs) / 1000 || 0);
+        this.lastTs = ts;
+        this.update(dt, ts);
+        this.render(ts);
+        this.animId = requestAnimationFrame(this.loop);
+      }
+
+      updateHighScoreUI() {
+        document.getElementById("highScoreMenu").textContent = `EN YÜKSEK SKOR: ${this.highScore}`;
+      }
+    }
+
+    new Game();
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "appId": "com.phaseloop.game",
+  "appName": "Phase Loop",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

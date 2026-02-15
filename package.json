@@ -1,0 +1,29 @@
+{
+  "name": "phase-loop",
+  "version": "1.0.1",
+  "description": "Phase Loop mobil oyun ve Android AAB üretim altyapısı",
+  "main": "index.html",
+  "scripts": {
+    "serve": "npx http-server . -p 8080",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "android": "npx cap open android",
+    "build:aab": "cd android && ./gradlew bundleRelease"
+  },
+  "keywords": [
+    "game",
+    "canvas",
+    "capacitor",
+    "android"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  }
+}
